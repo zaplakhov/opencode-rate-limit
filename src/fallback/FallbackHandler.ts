@@ -12,6 +12,7 @@ import { extractMessageParts, convertPartsToSDKFormat, safeShowToast, getStateKe
 import type { SubagentTracker } from '../session/SubagentTracker.js';
 import { RetryManager } from '../retry/RetryManager.js';
 import type { HealthTracker } from '../health/HealthTracker.js';
+import { StatusReporter } from '../tui/StatusReporter.js';
 import { DynamicPrioritizer } from '../dynamic/DynamicPrioritizer.js';
 import { DEFAULT_DYNAMIC_PRIORITIZATION_CONFIG } from '../config/defaults.js';
 
@@ -48,6 +49,9 @@ export class FallbackHandler {
   // Dynamic prioritizer reference
   private dynamicPrioritizer?: DynamicPrioritizer;
 
+  // Status reporter reference
+  private statusReporter?: StatusReporter;
+
   // Session agent tracking - stores current agent/mode for each session
   private currentSessionAgent: Map<string, { agent: string; lastUpdated: number }>;
 
@@ -57,7 +61,8 @@ export class FallbackHandler {
     logger: Logger,
     metricsManager: MetricsManager,
     subagentTracker: SubagentTracker,
-    healthTracker?: HealthTracker
+    healthTracker?: HealthTracker,
+    statusReporter?: StatusReporter
   ) {
     this.config = config;
     this.client = client;
@@ -65,6 +70,7 @@ export class FallbackHandler {
     this.metricsManager = metricsManager;
     this.subagentTracker = subagentTracker;
     this.healthTracker = healthTracker;
+    this.statusReporter = statusReporter;
 
     // Initialize circuit breaker if enabled
     if (config.circuitBreaker?.enabled) {
@@ -361,14 +367,26 @@ export class FallbackHandler {
         this.healthTracker.recordFailure(currentProviderID, currentModelID);
       }
 
-      await safeShowToast(this.client, {
-        body: {
-          title: "Rate Limit Detected",
-          message: `Switching from ${currentModelID || 'current model'}...`,
-          variant: "warning",
-          duration: 3000,
-        },
-      });
+      if (this.statusReporter && currentProviderID && currentModelID) {
+        // Find fallback model to show in toast preview (empty attempted models for now)
+        const nextModelPreview = await this.modelSelector.selectFallbackModel(currentProviderID, currentModelID, new Set<string>());
+
+        await this.statusReporter.showRateLimitToast(
+          currentProviderID,
+          currentModelID,
+          nextModelPreview?.providerID,
+          nextModelPreview?.modelID
+        );
+      } else {
+        await safeShowToast(this.client, {
+          body: {
+            title: "Rate Limit Detected",
+            message: `Switching from ${currentModelID || 'current model'}...`,
+            variant: "warning",
+            duration: 3000,
+          },
+        });
+      }
 
       // Get messages from the session
       const messagesResult = await this.client.session.messages({ path: { id: targetSessionID } });
@@ -388,6 +406,9 @@ export class FallbackHandler {
         return; // Skip - already processing
       }
 
+      // Get or create retry state for this message
+      const state = this.getOrCreateRetryState(sessionID, lastUserMessage.info.id);
+
       // Update hierarchy state if exists
       if (hierarchy && rootSessionID) {
         hierarchy.sharedFallbackState = "in_progress";
@@ -399,8 +420,6 @@ export class FallbackHandler {
         }
       }
 
-      // Get or create retry state for this message
-      const state = this.getOrCreateRetryState(sessionID, lastUserMessage.info.id);
       const stateKey = getStateKey(sessionID, lastUserMessage.info.id);
       const fallbackKey = getStateKey(dedupSessionID, lastUserMessage.info.id);
 
@@ -596,6 +615,11 @@ export class FallbackHandler {
               this.metricsManager.recordModelSuccess(tracked.providerID, tracked.modelID, responseTime);
               this.modelRequestStartTimes.delete(modelKey);
             }
+          }
+
+          // Record successful request in status reporter for TUI counters
+          if (this.statusReporter) {
+            this.statusReporter.recordRequest(tracked.providerID, tracked.modelID);
           }
         }
       }

@@ -24,6 +24,8 @@ import { HealthTracker } from "./src/health/HealthTracker.js";
 import { DiagnosticReporter } from "./src/diagnostics/Reporter.js";
 import { ConfigWatcher } from "./src/config/Watcher.js";
 import { ConfigReloader, type ComponentRefs } from "./src/main/ConfigReloader.js";
+import { StatusReporter } from "./src/tui/StatusReporter.js";
+import { tool } from "@opencode-ai/plugin/tool";
 
 // ============================================================================
 // Helper Functions
@@ -94,7 +96,7 @@ function isSessionStatusEvent(event: { type: string; properties: unknown }): eve
 /**
  * Check if event is a subagent session created event
  */
-function isSubagentSessionCreatedEvent(event: { type: string; properties?: unknown }): event is { type: "subagent.session.created"; properties: { sessionID: string; parentSessionID: string; [key: string]: unknown } } {
+function isSubagentSessionCreatedEvent(event: { type: string; properties?: unknown }): event is { type: "subagent.session.created"; properties: { sessionID: string; parentSessionID: string;[key: string]: unknown } } {
   return event.type === "subagent.session.created" &&
     typeof event.properties === "object" &&
     event.properties !== null &&
@@ -150,10 +152,10 @@ export const RateLimitFallback: Plugin = async ({ client, directory, worktree })
   // Log config merge diff in verbose mode
   if (config.verbose && configSource) {
     if (configLoadResult.rawUserConfig &&
-        typeof configLoadResult.rawUserConfig === 'object' &&
-        configLoadResult.rawUserConfig !== null &&
-        !Array.isArray(configLoadResult.rawUserConfig) &&
-        Object.keys(configLoadResult.rawUserConfig).length > 0) {
+      typeof configLoadResult.rawUserConfig === 'object' &&
+      configLoadResult.rawUserConfig !== null &&
+      !Array.isArray(configLoadResult.rawUserConfig) &&
+      Object.keys(configLoadResult.rawUserConfig).length > 0) {
       logger.info("Configuration merge details:");
       const diffs = getObjectDiff(
         configLoadResult.rawUserConfig as Record<string, unknown>,
@@ -239,7 +241,9 @@ export const RateLimitFallback: Plugin = async ({ client, directory, worktree })
 
   const metricsManager = new MetricsManager(config.metrics ?? { enabled: false, output: { console: true, format: "pretty" }, resetInterval: "daily" }, logger);
 
-  const fallbackHandler = new FallbackHandler(config, client, logger, metricsManager, subagentTracker, healthTracker);
+  const statusReporter = new StatusReporter(client, config, logger, metricsManager, healthTracker || new HealthTracker(config, logger));
+
+  const fallbackHandler = new FallbackHandler(config, client, logger, metricsManager, subagentTracker, healthTracker, statusReporter);
 
   // Initialize config reloader if hot reload is enabled
   let configWatcher: ConfigWatcher | undefined;
@@ -313,6 +317,15 @@ export const RateLimitFallback: Plugin = async ({ client, directory, worktree })
   }
 
   return {
+    tool: {
+      "rate-limit-status": tool({
+        description: "Показать подробную статистику лимитов (rate limits), здоровье моделей (health score) и прогноз до следующей блокировки.",
+        args: {},
+        async execute() {
+          return statusReporter.getFullReport();
+        },
+      }),
+    },
     event: async ({ event }) => {
       // Handle session.error events
       if (isSessionErrorEvent(event)) {
