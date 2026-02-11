@@ -3,57 +3,75 @@
 [![npm version](https://badge.fury.io/js/opencode-rate-limit.svg)](https://www.npmjs.com/package/opencode-rate-limit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Плагин для [OpenCode](https://github.com/nichochar/opencode), который автоматически переключается на резервные модели при достижении лимита запросов (rate limit). Форк проекта [@azumag/opencode-rate-limit-fallback](https://github.com/azumag/opencode-rate-limit-fallback) с модульной архитектурой и расширенной функциональностью.
+OpenCode plugin that automatically switches to fallback models when rate limit is reached. Built with a modular architecture and comprehensive features for robust AI model fallback management.
 
-## Возможности
+## Features
 
-- 🔄 **Автоматический fallback** — обнаружение ошибок rate limit (429, "usage limit", "quota exceeded", "high concurrency") и мгновенное переключение на резервную модель
-- 📋 **Список резервных моделей с приоритетом** — настраиваемый порядок переключения между моделями
-- 🔁 **Три режима fallback** — `cycle` (циклический перебор), `stop` (остановка) и `retry-last` (повтор последней модели)
-- 🤖 **Сохранение агента/режима** — при переключении модели сохраняется текущий агент (plan, build и т.д.)
-- ⏱️ **Cooldown** — настраиваемый период ожидания перед повторной попыткой заблокированной модели
-- 📊 **Экспоненциальный backoff** — стратегии immediate, exponential, linear с jitter
-- 🔌 **Поддержка субагентов** — автоматическая пропагация fallback по иерархии сессий
-- ⚡ **Circuit Breaker** — автоматическое отключение стабильно падающих моделей
-- 📈 **Система метрик** — детальная статистика rate limit, fallback, retry и производительности моделей
-- 🔃 **Hot Reload** — перезагрузка конфигурации без перезапуска OpenCode
-- 🧠 **Динамическая приоритизация** — автоматическая переупорядочивание моделей по success rate, response time и частоте использования
-- 🏥 **Health Tracker** — мониторинг здоровья каждой модели
-- 📚 **Pattern Learning** — обучение на ошибках для распознавания новых паттернов rate limit
-- 🔒 **Event Lock с TTL** — предотвращение циклических запросов при множественных событиях
+- 🔄 **Automatic Fallback** — Detects rate limit errors (429, "usage limit", "quota exceeded", "high concurrency") and instantly switches to a backup model
+- 📋 **Priority-Based Model List** — Configurable fallback order with multiple models
+- 🔁 **Three Fallback Modes** — `cycle` (cycling through), `stop` (stop with error), and `retry-last` (retry last model)
+- 🤖 **Agent/Mode Preservation** — Maintains current agent context during model switching
+- ⏱️ **Cooldown** — Configurable wait period before retrying blocked models
+- 📊 **Exponential Backoff** — Strategies: immediate, exponential, linear with jitter
+- 🔌 **Subagent Support** — Automatic fallback propagation through session hierarchy
+- ⚡ **Circuit Breaker** — Automatic disconnection of consistently failing models
+- 📈 **Metrics System** — Detailed statistics on rate limits, fallbacks, retries, and model performance
+- 🔃 **Hot Reload** — Configuration reload without restarting OpenCode
+- 🧠 **Dynamic Prioritization** — Auto-reordering models based on success rate, response time, and usage frequency
+- 🏥 **Health Tracker** — Real-time health monitoring for each model
+- 📚 **Pattern Learning** — Self-learning error pattern recognition for rate limit detection
+- 🔒 **Event Lock with TTL** — Prevents concurrent processing of multiple rate limit events
 
-## Отличия от оригинальной версии
+## Why Choose This Plugin?
 
-Данный плагин является переработанным форком [`@azumag/opencode-rate-limit-fallback`](https://github.com/azumag/opencode-rate-limit-fallback). Основные отличия:
+Built with a modern, modular architecture designed specifically for robust AI model fallback management.
 
-| Функция | Оригинал | opencode-rate-limit |
-|---------|----------|---------------------|
-| Архитектура | Монолитный файл | 12 модулей (circuitbreaker, config, diagnostics, dynamic, errors, fallback, health, main, metrics, retry, session, utils) |
-| Защита от циклических запросов | Отсутствует | Event Lock с TTL (10 сек) — единая блокировка на сессию |
-| Circuit Breaker | Отсутствует | Полноценный CB с состояниями CLOSED → OPEN → HALF_OPEN |
-| Hot Reload конфигурации | Отсутствует | Автоматическая перезагрузка при изменении файла |
-| Динамическая приоритизация | Отсутствует | Автоматический реордеринг по score (success rate × 0.6 + response time × 0.3 + usage × 0.1) |
-| Health Tracker | Отсутствует | Мониторинг здоровья каждой модели с историей |
-| Pattern Learning | Отсутствует | Самообучение для распознавания новых ошибок rate limit |
-| Диагностика | Отсутствует | DiagnosticReporter с детальной отчётностью |
-| Валидация конфигурации | Базовая | ConfigValidator со строгим режимом (strict mode) |
-| Тесты | Ручной скрипт | Полноценные unit-тесты на Vitest |
+### 🏗️ **Modular Architecture**
+Organized into 12 independent modules (circuitbreaker, config, diagnostics, dynamic, errors, fallback, health, main, metrics, retry, session, utils) for maintainability and testability.
 
-## Установка
+### 🔒 **Event Lock with TTL**
+Prevents concurrent rate limit event processing with a single session lock (10s TTL), eliminating race conditions and redundant fallback attempts.
 
-### Через npm (рекомендуется)
+### ⚡ **Circuit Breaker Pattern**
+Full circuit breaker implementation with states: CLOSED → OPEN → HALF_OPEN. Automatically disconnects failing models and tests recovery, preventing repeated failures.
+
+### 🔃 **Hot Reload Configuration**
+Monitor configuration files and reload settings in real-time without restarting OpenCode. Debounced with 1-second delay for stability.
+
+### 🧠 **Dynamic Prioritization**
+Auto-reorders models based on a scoring system:
+```
+score = successRate × 0.6 + responseTime × 0.3 + recentUsage × 0.1
+```
+
+### 🏥 **Health Tracker**
+Real-time health monitoring with persistent storage. Tracks success rates, response times, and consecutive failures for intelligent model selection.
+
+### 📚 **Pattern Learning**
+Self-learning system that recognizes new rate limit patterns, improving fallback accuracy over time.
+
+### 📊 **Comprehensive Metrics**
+Detailed reporting with console output, file storage, and CLI integration. Monitor rate limits, fallbacks, retries, and model performance in real-time.
+
+### ✅ **Strict Validation**
+ConfigValidator with strict mode ensures configuration integrity before runtime.
+
+### 🧪 **Full Test Coverage**
+Vitest-powered unit tests with coverage, replacing manual scripts with professional testing.
+
+### Via npm (recommended)
 
 ```bash
 npm install opencode-rate-limit
 ```
 
-### Через GitHub
+### Via GitHub
 
 ```bash
 npm install github:zaplakhov/opencode-rate-limit
 ```
 
-### Из исходников
+### From source
 
 ```bash
 git clone https://github.com/zaplakhov/opencode-rate-limit.git
@@ -62,21 +80,9 @@ npm install
 npm run build
 ```
 
-### Подключение к OpenCode
+## Configuration
 
-Добавьте плагин в ваш `opencode.json`:
-
-```json
-{
-  "plugins": ["opencode-rate-limit"]
-}
-```
-
-OpenCode автоматически загрузит плагин при запуске.
-
-## Конфигурация
-
-Создайте файл конфигурации в одном из следующих расположений (в порядке приоритета):
+Create a configuration file in one of the following locations (in priority order):
 
 1. `<worktree>/.opencode/rate-limit-fallback.json`
 2. `<worktree>/rate-limit-fallback.json`
@@ -85,7 +91,7 @@ OpenCode автоматически загрузит плагин при зап�
 5. `~/.opencode/rate-limit-fallback.json` *(рекомендуется)*
 6. `~/.config/opencode/rate-limit-fallback.json`
 
-### Минимальная конфигурация
+### Minimal Configuration
 
 ```json
 {
@@ -95,7 +101,7 @@ OpenCode автоматически загрузит плагин при зап�
 }
 ```
 
-### Полная конфигурация
+### Full Configuration
 
 ```json
 {
@@ -151,61 +157,87 @@ OpenCode автоматически загрузит плагин при зап�
 }
 ```
 
-### Параметры конфигурации
+## Installation
 
-| Параметр | Тип | По умолчанию | Описание |
-|----------|-----|--------------|----------|
-| `enabled` | boolean | `true` | Включение/выключение плагина |
-| `cooldownMs` | number | `60000` | Период ожидания (мс) перед повторной попыткой заблокированной модели |
-| `fallbackMode` | string | `"cycle"` | Поведение при исчерпании всех моделей |
-| `fallbackModels` | array | `[]` | Список резервных моделей в порядке приоритета |
-| `maxSubagentDepth` | number | `10` | Максимальная глубина вложенности субагентов |
-| `enableSubagentFallback` | boolean | `true` | Включение fallback для субагентов |
+### Via npm (recommended)
 
-### Режимы Fallback
+```bash
+npm install opencode-rate-limit
+```
 
-| Режим | Описание |
-|-------|----------|
-| `cycle` | Сброс и повторный перебор с первой модели (по умолчанию) |
-| `stop` | Остановка и вывод ошибки при исчерпании всех моделей |
-| `retry-last` | Повтор последней модели, затем сброс на первую |
+### Via GitHub
+
+```bash
+npm install github:zaplakhov/opencode-rate-limit
+```
+
+### From source
+
+```bash
+git clone https://github.com/zaplakhov/opencode-rate-limit.git
+cd opencode-rate-limit
+npm install
+npm run build
+```
+
+### Connecting to OpenCode
+
+Add the plugin to your `opencode.json`:
+
+```json
+{
+  "plugins": ["opencode-rate-limit"]
+}
+```
+
+OpenCode will automatically load the plugin on startup.
+
+Create a configuration file in one of the following locations (in priority order):
+
+### Fallback Modes
+
+| Mode | Description |
+|------|-------------|
+| `cycle` | Reset and cycle through all models from first (default) |
+| `stop` | Stop and show error when all models are exhausted |
+| `retry-last` | Retry last model, then reset to first |
 
 ### Retry Policy
 
-| Параметр | Тип | По умолчанию | Описание |
-|----------|-----|--------------|----------|
-| `maxRetries` | number | `3` | Максимальное количество попыток |
-| `strategy` | string | `"immediate"` | Стратегия: `immediate`, `exponential`, `linear` |
-| `baseDelayMs` | number | `1000` | Базовая задержка (мс) |
-| `maxDelayMs` | number | `30000` | Максимальная задержка (мс) |
-| `jitterEnabled` | boolean | `false` | Случайное отклонение для предотвращения thundering herd |
-| `jitterFactor` | number | `0.1` | Фактор jitter (0.1 = ±10%) |
-| `timeoutMs` | number | — | Общий таймаут для всех попыток (опционально) |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `maxRetries` | number | `3` | Maximum number of retry attempts |
+| `strategy` | string | `"immediate"` | Strategy: `immediate`, `exponential`, `linear` |
+| `baseDelayMs` | number | `1000` | Base delay (ms) |
+| `maxDelayMs` | number | `30000` | Maximum delay (ms) |
+| `jitterEnabled` | boolean | `false` | Random jitter to prevent thundering herd |
+| `jitterFactor` | number | `0.1` | Jitter factor (0.1 = ±10%) |
+| `timeoutMs` | number | — | Overall timeout for all attempts (optional) |
 
 ### Circuit Breaker
 
-| Параметр | Тип | По умолчанию | Описание |
-|----------|-----|--------------|----------|
-| `circuitBreaker.enabled` | boolean | `false` | Включение circuit breaker |
-| `circuitBreaker.failureThreshold` | number | `5` | Кол-во сбоев до открытия цепи |
-| `circuitBreaker.recoveryTimeoutMs` | number | `60000` | Время ожидания перед тестом восстановления |
-| `circuitBreaker.halfOpenMaxCalls` | number | `1` | Макс. вызовов в HALF_OPEN |
-| `circuitBreaker.successThreshold` | number | `2` | Успешных вызовов для закрытия цепи |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `circuitBreaker.enabled` | boolean | `false` | Enable circuit breaker |
+| `circuitBreaker.failureThreshold` | number | `5` | Number of failures before opening circuit |
+| `circuitBreaker.recoveryTimeoutMs` | number | `60000` | Time before attempting recovery test |
+| `circuitBreaker.halfOpenMaxCalls` | number | `1` | Max calls in HALF_OPEN state |
+| `circuitBreaker.successThreshold` | number | `2` | Successful calls to close circuit |
 
 ### Hot Reload
 
-| Параметр | Тип | По умолчанию | Описание |
-|----------|-----|--------------|----------|
-| `configReload.enabled` | boolean | `false` | Включение hot reload |
-| `configReload.watchFile` | boolean | `true` | Отслеживание файла конфигурации |
-| `configReload.debounceMs` | number | `1000` | Задержка debounce (мс) |
-| `configReload.notifyOnReload` | boolean | `true` | Toast-уведомление при reload |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `configReload.enabled` | boolean | `false` | Enable hot reload |
+| `configReload.watchFile` | boolean | `true` | Watch configuration file |
+| `configReload.debounceMs` | number | `1000` | Debounce delay (ms) |
+| `configReload.notifyOnReload` | boolean | `true` | Toast notification on reload |
 
-## Система метрик
+## Metrics System
 
-Плагин собирает статистику по rate limit, fallback, retry и производительности моделей. Для просмотра данных настройте вывод в конфигурации.
+The plugin collects statistics on rate limits, fallbacks, retries, and model performance. Configure output settings to view data.
 
-### Включение метрик
+### Enabling Metrics
 
 ```json
 {
@@ -220,11 +252,11 @@ OpenCode автоматически загрузит плагин при зап�
 }
 ```
 
-### Способы получения данных
+### Getting Metrics Data
 
-#### 1. Вывод в консоль
+#### 1. Console Output
 
-При `"console": true` метрики периодически выводятся в логи OpenCode. Пример вывода в формате `pretty`:
+When `"console": true`, metrics are periodically output to OpenCode logs. Example output in `pretty` format:
 
 ```
 ============================================================
@@ -248,26 +280,26 @@ Model Performance:
 ============================================================
 ```
 
-#### 2. Интеграция с TUI (Новое в v1.1.0)
+#### 2. TUI Integration (New in v1.1.0)
 
-Плагин глубоко интегрирован с OpenCode TUI для удобного мониторинга состояния в реальном времени.
+The plugin is deeply integrated with OpenCode TUI for convenient real-time monitoring.
 
-##### Автоматические уведомления (Toasts)
-При возникновении Rate Limit или переключении на резервную модель (Fallback) плагин показывает toast-уведомление с деталями:
-- **Health Score**: Текущее "здоровье" основной модели (0-100).
-- **Счётчик запросов**: Количество успешных запросов с момента последней блокировки.
-- **Модель перехода**: На какую модель выполняется переключение.
+##### Automatic Notifications (Toasts)
+When a Rate Limit occurs or the plugin switches to a fallback model, it displays a toast notification with details:
+- **Health Score**: Current health of the primary model (0-100).
+- **Request Counter**: Number of successful requests since last blockage.
+- **Transition Model**: Which model is being switched to.
 
-##### Команда `/rate-limit-status`
-Вы можете в любой момент запросить полный отчёт о состоянии метрик через AI или введя команду (если поддерживается клиентом). Этот инструмент возвращает подробный Markdown-отчёт:
-- Общее здоровье всех отслеживаемых моделей.
-- Количество сбоев и успешных запросов по каждой модели.
-- **Прогноз**: Примерное количество запросов до следующей блокировки на основе накопленной статистики.
-- Статистика Fallbacks (кол-во переключений, средняя длительность).
+##### Command `/rate-limit-status`
+You can request a full metrics status report at any time via AI or by entering a command (if the client supports it). This tool returns a detailed Markdown report:
+- Overall health of all monitored models.
+- Number of failures and successful requests for each model.
+- **Forecast**: Estimated number of requests until next blockage based on accumulated statistics.
+- Fallback statistics (number of switches, average duration).
 
-#### 3. Сохранение в файл
+#### 3. File Storage
 
-Укажите путь в `"output.file"` для автоматического сохранения:
+Specify a path in `"output.file"` for automatic saving:
 
 ```json
 {
@@ -282,21 +314,21 @@ Model Performance:
 }
 ```
 
-Файл обновляется автоматически. Доступные форматы: `pretty` (текст), `json`, `csv`.
+The file is updated automatically. Available formats: `pretty` (text), `json`, `csv`.
 
-#### 3. Интервал сброса
+#### 3. Reset Interval
 
-| Значение | Описание |
-|----------|----------|
-| `"hourly"` | Сброс метрик каждый час |
-| `"daily"` | Сброс раз в сутки (по умолчанию) |
-| `"weekly"` | Сброс раз в неделю |
+| Value | Description |
+|-------|-------------|
+| `"hourly"` | Reset metrics every hour |
+| `"daily"` | Reset once per day (default) |
+| `"weekly"` | Reset once per week |
 
 ## Health Tracker
 
-Health Tracker отслеживает здоровье каждой модели на основе success rate и времени ответа. Данные используются для интеллектуального выбора fallback-модели.
+Health Tracker monitors the health of each model based on success rate and response time. Data is used for intelligent fallback model selection.
 
-### Включение
+### Enabling
 
 ```json
 {
@@ -308,9 +340,9 @@ Health Tracker отслеживает здоровье каждой модели
 }
 ```
 
-### Как просмотреть данные
+### Viewing Data
 
-Health Tracker автоматически сохраняет данные в JSON-файл по указанному пути (по умолчанию `~/.opencode/rate-limit-fallback-health.json`). Файл содержит:
+Health Tracker automatically saves data to a JSON file at the specified path (default `~/.opencode/rate-limit-fallback-health.json`). The file contains:
 
 ```json
 {
@@ -336,26 +368,26 @@ Health Tracker автоматически сохраняет данные в JSO
 }
 ```
 
-### Параметры Health Tracker
+### Health Tracker Parameters
 
-| Параметр | Тип | По умолчанию | Описание |
-|----------|-----|--------------|----------|
-| `enableHealthBasedSelection` | boolean | `false` | Использовать health score при выборе модели |
-| `healthPersistence.enabled` | boolean | `true` | Сохранение данных между сессиями |
-| `healthPersistence.path` | string | `~/.opencode/rate-limit-fallback-health.json` | Путь к файлу данных |
-| `healthPersistence.responseTimeThreshold` | number | `2000` | Порог времени ответа (мс) |
-| `healthPersistence.minRequestsForReliableScore` | number | `3` | Мин. запросов для надёжной оценки |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `enableHealthBasedSelection` | boolean | `false` | Use health score for model selection |
+| `healthPersistence.enabled` | boolean | `true` | Persist data between sessions |
+| `healthPersistence.path` | string | `~/.opencode/rate-limit-fallback-health.json` | Path to data file |
+| `healthPersistence.responseTimeThreshold` | number | `2000` | Response time threshold (ms) |
+| `healthPersistence.minRequestsForReliableScore` | number | `3` | Min requests for reliable score |
 
-### Расчёт Health Score
+### Health Score Calculation
 
-Каждая модель получает оценку от 0 до 100:
-- **Базовая оценка** = `(successfulRequests / totalRequests) × 100`
-- **Штраф за время ответа** = если `avgResponseTime > 2000мс`, вычитается `(avgResponseTime - 2000) / 200` баллов
-- **Штраф за сбои** = `consecutiveFailures × 15` баллов вычитается
+Each model receives a score from 0 to 100:
+- **Base score** = `(successfulRequests / totalRequests) × 100`
+- **Response time penalty** = if `avgResponseTime > 2000ms`, subtract `(avgResponseTime - 2000) / 200` points
+- **Failure penalty** = subtract `consecutiveFailures × 15` points
 
-## Диагностика
+## Diagnostics
 
-Для детальной информации о работе плагина включите verbose-режим:
+For detailed plugin operation information, enable verbose mode:
 
 ```json
 {
@@ -363,41 +395,39 @@ Health Tracker автоматически сохраняет данные в JSO
 }
 ```
 
-В verbose-режиме плагин выводит:
-- Текущую конфигурацию и источник файла
-- Детали слияния конфигурации (что изменено от умолчаний)
-- Состояние Circuit Breaker по каждой модели
-- Статистику Health Tracker
-- Активные fallback-операции
+In verbose mode, the plugin outputs:
+- Current configuration and file source
+- Configuration merge details (changes from defaults)
+- Circuit Breaker status for each model
+- Health Tracker statistics
+- Active fallback operations
 
-## Как это работает
+## How It Works
 
-1. **Обнаружение** — плагин слушает события rate limit через `session.error`, `message.updated` и `session.status`
-2. **Event Lock** — единая блокировка на сессию (TTL 10 сек) предотвращает множественные параллельные обработки одной ошибки
-3. **Abort** — текущая сессия прерывается для остановки внутреннего retry-механизма OpenCode
-4. **Fallback** — выбирается следующая доступная модель из fallback-списка
-5. **Cooldown** — заблокированные модели пропускаются на настроенный период
+1. **Detection** — Plugin listens for rate limit events via `session.error`, `message.updated`, and `session.status`
+2. **Event Lock** — Single session lock (10s TTL) prevents multiple parallel processing of the same error
+3. **Abort** — Current session is aborted to stop OpenCode's internal retry mechanism
+4. **Fallback** — Next available model is selected from the fallback list
+5. **Cooldown** — Blocked models are skipped for the configured period
 
-## Устранение неполадок
+## Troubleshooting
 
-### Плагин не выполняет fallback при rate limit
+### Plugin not performing fallback on rate limit
 
-1. Убедитесь, что файл конфигурации существует и валиден
-2. Проверьте, что `fallbackModels` не пуст
-3. Убедитесь, что `enabled: true`
-4. Проверьте логи плагина
+1. Ensure configuration file exists and is valid
+2. Check that `fallbackModels` is not empty
+3. Ensure `enabled: true`
+4. Check plugin logs
 
-### Все модели быстро исчерпываются
+### All models running out quickly
 
-1. Добавьте больше моделей в `fallbackModels`
-2. Увеличьте `cooldownMs`
-3. Используйте `fallbackMode: "cycle"` для автоматического сброса
-4. Включите `circuitBreaker` для отсечения нестабильных моделей
+1. Add more models to `fallbackModels`
+2. Increase `cooldownMs`
+3. Use `fallbackMode: "cycle"` for automatic reset
+4. Enable `circuitBreaker` to filter out unstable models
 
-## Благодарности
 
-Основан на проекте [@azumag/opencode-rate-limit-fallback](https://github.com/azumag/opencode-rate-limit-fallback).
 
-## Лицензия
+## License
 
 [MIT](LICENSE)
