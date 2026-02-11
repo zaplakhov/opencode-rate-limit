@@ -3,7 +3,7 @@
 [![npm version](https://badge.fury.io/js/opencode-rate-limit.svg)](https://www.npmjs.com/package/opencode-rate-limit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-OpenCode plugin that automatically switches to fallback models when rate limit is reached. Built with a modular architecture and comprehensive features for robust AI model fallback management.
+OpenCode plugin that keeps your **dev flow** unblocked by automatically switching between multiple AI models when you hit rate limits (429, "quota exceeded", "usage limit", "high concurrency", etc.). If you "vibe code" with several providers (Gemini Pro, Codex Plus, Z.ai, etc.), this plugin turns them into a single virtual model pool: when one model hits a limit, OpenCode transparently falls back to the next configured model without breaking your session.
 
 ## Features
 
@@ -12,87 +12,100 @@ OpenCode plugin that automatically switches to fallback models when rate limit i
 - 🔁 **Three Fallback Modes** — `cycle` (cycling through), `stop` (stop with error), and `retry-last` (retry last model)
 - 🤖 **Agent/Mode Preservation** — Maintains current agent context during model switching
 - ⏱️ **Cooldown** — Configurable wait period before retrying blocked models
-- 📊 **Exponential Backoff** — Strategies: immediate, exponential, linear with jitter
+- 📊 **Flexible Retry Policy** — Immediate, exponential, or linear backoff with optional jitter and global timeout
 - 🔌 **Subagent Support** — Automatic fallback propagation through session hierarchy
 - ⚡ **Circuit Breaker** — Automatic disconnection of consistently failing models
 - 📈 **Metrics System** — Detailed statistics on rate limits, fallbacks, retries, and model performance
 - 🔃 **Hot Reload** — Configuration reload without restarting OpenCode
 - 🧠 **Dynamic Prioritization** — Auto-reordering models based on success rate, response time, and usage frequency
-- 🏥 **Health Tracker** — Real-time health monitoring for each model
+- 🏥 **Health Tracker** — Real-time health monitoring for each model with persistent scores
 - 📚 **Pattern Learning** — Self-learning error pattern recognition for rate limit detection
 - 🔒 **Event Lock with TTL** — Prevents concurrent processing of multiple rate limit events
 
 ## Why Choose This Plugin?
 
-Built with a modern, modular architecture designed specifically for robust AI model fallback management.
+Built for people who keep several AI subs active and don't want their coding session to die just because one provider hits a limit. You get a single resilient OpenCode setup that can mix cheap/fast and expensive/high‑quality models without manual switching.
+
+### 🧑‍💻 **Vibe Coding Without Pauses**
+
+Configure multiple providers (Gemini, Anthropic, Z.ai, etc.) and let the plugin seamlessly hop between them whenever one runs into rate limits or concurrency caps.
 
 ### 🏗️ **Modular Architecture**
-Organized into 12 independent modules (circuitbreaker, config, diagnostics, dynamic, errors, fallback, health, main, metrics, retry, session, utils) for maintainability and testability.
+
+Organized into independent modules (circuitbreaker, config, diagnostics, dynamic, errors, fallback, health, main, metrics, retry, session, utils) for maintainability and testability.
 
 ### 🔒 **Event Lock with TTL**
-Prevents concurrent rate limit event processing with a single session lock (10s TTL), eliminating race conditions and redundant fallback attempts.
+
+A single session lock with TTL prevents parallel handling of the same rate limit event, eliminating race conditions and redundant fallback attempts.
 
 ### ⚡ **Circuit Breaker Pattern**
-Full circuit breaker implementation with states: CLOSED → OPEN → HALF_OPEN. Automatically disconnects failing models and tests recovery, preventing repeated failures.
+
+Full circuit breaker implementation (CLOSED → OPEN → HALF_OPEN) disconnects failing models and tests recovery, preventing repeated failures from the same provider.
 
 ### 🔃 **Hot Reload Configuration**
-Monitor configuration files and reload settings in real-time without restarting OpenCode. Debounced with 1-second delay for stability.
+
+Watches configuration files and reloads settings in real time, with a debounce delay for stability, so you can tweak your fallback setup without restarting OpenCode.
 
 ### 🧠 **Dynamic Prioritization**
-Auto-reorders models based on a scoring system:
-```
-score = successRate × 0.6 + responseTime × 0.3 + recentUsage × 0.1
-```
+
+Auto-reorders models based on a scoring system that considers success rate, response time, and recent usage, keeping the best models at the top over time.
 
 ### 🏥 **Health Tracker**
-Real-time health monitoring with persistent storage. Tracks success rates, response times, and consecutive failures for intelligent model selection.
+
+Tracks success rates, response times, and consecutive failures for each model, persists data to disk, and exposes a per‑model health score (0–100) used for smarter selection.
 
 ### 📚 **Pattern Learning**
-Self-learning system that recognizes new rate limit patterns, improving fallback accuracy over time.
+
+Learns new rate limit patterns from real traffic, improving detection and fallback accuracy without hardcoding every provider message.
 
 ### 📊 **Comprehensive Metrics**
-Detailed reporting with console output, file storage, and CLI integration. Monitor rate limits, fallbacks, retries, and model performance in real-time.
 
-### ✅ **Strict Validation**
-ConfigValidator with strict mode ensures configuration integrity before runtime.
+Provides console output, optional file storage, and TUI/CLI integration so you can monitor rate limits, fallbacks, retries, and model performance in real time.
 
-### 🧪 **Full Test Coverage**
-Vitest-powered unit tests with coverage, replacing manual scripts with professional testing.
+### ✅ **Strict Validation & Tests**
+
+A strict ConfigValidator checks configuration integrity before runtime, and the codebase is covered by Vitest-powered unit tests.
 
 ## Installation
 
 ### Via npm (recommended)
 
-```bash
 npm install opencode-rate-limit
-```
 
 ### Via GitHub
 
-```bash
 npm install github:zaplakhov/opencode-rate-limit
-```
 
 ### From source
 
-```bash
 git clone https://github.com/zaplakhov/opencode-rate-limit.git
 cd opencode-rate-limit
 npm install
 npm run build
-```
 
-### Connecting to OpenCode
+## Quick OpenCode Setup
 
 Add the plugin to your `opencode.json`:
 
-```json
 {
   "plugins": ["opencode-rate-limit"]
 }
-```
 
-OpenCode will automatically load the plugin on startup.
+Then create a minimal config (for example at `~/.opencode/rate-limit-fallback.json`):
+
+{
+  "fallbackModels": [
+    { "providerID": "anthropic", "modelID": "claude-sonnet-4-20250514" },
+    { "providerID": "google", "modelID": "gemini-2.5-pro" },
+    { "providerID": "google", "modelID": "gemini-2.5-flash" }
+  ]
+}
+
+From this point, when one model hits a limit, OpenCode will automatically switch to the next configured one without interrupting your session.
+
+## Connecting to OpenCode (Advanced)
+
+OpenCode will automatically load the plugin on startup once it is listed in `opencode.json`.
 
 Create a configuration file in one of the following locations (in priority order):
 
@@ -103,19 +116,8 @@ Create a configuration file in one of the following locations (in priority order
 5. `~/.opencode/rate-limit-fallback.json` *(recommended)*
 6. `~/.config/opencode/rate-limit-fallback.json`
 
-### Minimal Configuration
-
-```json
-{
-  "fallbackModels": [
-    { "providerID": "anthropic", "modelID": "claude-sonnet-4-20250514" }
-  ]
-}
-```
-
 ### Full Configuration
 
-```json
 {
   "enabled": true,
   "cooldownMs": 60000,
@@ -165,56 +167,59 @@ Create a configuration file in one of the following locations (in priority order
     "recentUsageWeight": 0.1,
     "minSamples": 3,
     "maxHistorySize": 100
+  },
+  "enableHealthBasedSelection": true,
+  "healthPersistence": {
+    "enabled": true,
+    "path": "~/.opencode/rate-limit-fallback-health.json"
   }
 }
-```
 
 ### Fallback Modes
 
-| Mode | Description |
-|------|-------------|
-| `cycle` | Reset and cycle through all models from first (default) |
-| `stop` | Stop and show error when all models are exhausted |
-| `retry-last` | Retry last model, then reset to first |
+| Mode        | Description                                                 |
+|------------|-------------------------------------------------------------|
+| `cycle`    | Reset and cycle through all models from first (default).    |
+| `stop`     | Stop and show error when all models are exhausted.          |
+| `retry-last` | Retry last model, then reset to first.                   |
 
 ### Retry Policy
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `maxRetries` | number | `3` | Maximum number of retry attempts |
-| `strategy` | string | `"immediate"` | Strategy: `immediate`, `exponential`, `linear` |
-| `baseDelayMs` | number | `1000` | Base delay (ms) |
-| `maxDelayMs` | number | `30000` | Maximum delay (ms) |
-| `jitterEnabled` | boolean | `false` | Random jitter to prevent thundering herd |
-| `jitterFactor` | number | `0.1` | Jitter factor (0.1 = ±10%) |
-| `timeoutMs` | number | — | Overall timeout for all attempts (optional) |
+| Parameter       | Type    | Default       | Description                                      |
+|-----------------|---------|--------------|--------------------------------------------------|
+| `maxRetries`    | number  | `3`          | Maximum number of retry attempts.                |
+| `strategy`      | string  | `"immediate"`| Strategy: `immediate`, `exponential`, `linear`.  |
+| `baseDelayMs`   | number  | `1000`       | Base delay (ms).                                 |
+| `maxDelayMs`    | number  | `30000`      | Maximum delay (ms).                              |
+| `jitterEnabled` | boolean | `false`      | Random jitter to prevent thundering herd.        |
+| `jitterFactor`  | number  | `0.1`        | Jitter factor (0.1 = ±10%).                      |
+| `timeoutMs`     | number  | —            | Overall timeout for all attempts (optional).     |
 
 ### Circuit Breaker
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `circuitBreaker.enabled` | boolean | `false` | Enable circuit breaker |
-| `circuitBreaker.failureThreshold` | number | `5` | Number of failures before opening circuit |
-| `circuitBreaker.recoveryTimeoutMs` | number | `60000` | Time before attempting recovery test |
-| `circuitBreaker.halfOpenMaxCalls` | number | `1` | Max calls in HALF_OPEN state |
-| `circuitBreaker.successThreshold` | number | `2` | Successful calls to close circuit |
+| Parameter                          | Type    | Default | Description                                     |
+|------------------------------------|---------|---------|-------------------------------------------------|
+| `circuitBreaker.enabled`           | boolean | `false` | Enable circuit breaker.                         |
+| `circuitBreaker.failureThreshold`  | number  | `5`     | Number of failures before opening circuit.      |
+| `circuitBreaker.recoveryTimeoutMs` | number  | `60000` | Time before attempting recovery test.           |
+| `circuitBreaker.halfOpenMaxCalls`  | number  | `1`     | Max calls in HALF_OPEN state.                   |
+| `circuitBreaker.successThreshold`  | number  | `2`     | Successful calls to close circuit.              |
 
 ### Hot Reload
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `configReload.enabled` | boolean | `false` | Enable hot reload |
-| `configReload.watchFile` | boolean | `true` | Watch configuration file |
-| `configReload.debounceMs` | number | `1000` | Debounce delay (ms) |
-| `configReload.notifyOnReload` | boolean | `true` | Toast notification on reload |
+| Parameter                     | Type    | Default | Description                        |
+|-------------------------------|---------|---------|------------------------------------|
+| `configReload.enabled`        | boolean | `false` | Enable hot reload.                 |
+| `configReload.watchFile`      | boolean | `true`  | Watch configuration file.          |
+| `configReload.debounceMs`     | number  | `1000`  | Debounce delay (ms).               |
+| `configReload.notifyOnReload` | boolean | `true`  | Toast notification on reload.      |
 
 ## Metrics System
 
-The plugin collects statistics on rate limits, fallbacks, retries, and model performance. Configure output settings to view data.
+The plugin collects statistics on rate limits, fallbacks, retries, and model performance, and can expose them via console, TUI, or files.
 
 ### Enabling Metrics
 
-```json
 {
   "metrics": {
     "enabled": true,
@@ -225,101 +230,19 @@ The plugin collects statistics on rate limits, fallbacks, retries, and model per
     "resetInterval": "daily"
   }
 }
-```
 
 ### Getting Metrics Data
 
-#### 1. Console Output
-
-When `"console": true`, metrics are periodically output to OpenCode logs. Example output in `pretty` format:
-
-```
-============================================================
-Rate Limit Fallback Metrics
-============================================================
-Started: 2026-02-11T10:00:00.000Z
-
-Rate Limits:
-  anthropic/claude-sonnet-4-20250514:
-    Count: 5
-    Avg Interval: 3.50s
-
-Fallbacks:
-  Total: 3 | Successful: 2 | Failed: 1
-  Avg Duration: 1.25s
-
-Model Performance:
-  google/gemini-2.5-pro:
-    Requests: 10 | Success Rate: 90.0%
-    Avg Response: 0.85s
-============================================================
-```
-
-#### 2. TUI Integration (New in v1.1.0)
-
-The plugin is deeply integrated with OpenCode TUI for convenient real-time monitoring.
-
-##### Automatic Notifications (Toasts)
-When a Rate Limit occurs or the plugin switches to a fallback model, it displays a toast notification with details:
-- **Health Score**: Current health of the primary model (0-100).
-- **Request Counter**: Number of successful requests since last blockage.
-- **Transition Model**: Which model is being switched to.
-
-##### Command `/rate-limit-status`
-You can request a full metrics status report at any time via AI or by entering a command (if the client supports it). This tool returns a detailed Markdown report:
-- Overall health of all monitored models.
-- Number of failures and successful requests for each model.
-- **Forecast**: Estimated number of requests until next blockage based on accumulated statistics.
-- Fallback statistics (number of switches, average duration).
-
-#### 3. File Storage
-
-Specify a path in `"output.file"` for automatic saving:
-
-```json
-{
-  "metrics": {
-    "enabled": true,
-    "output": {
-      "console": false,
-      "file": "~/.opencode/metrics.json",
-      "format": "json"
-    }
-  }
-}
-```
-
-The file is updated automatically. Available formats: `pretty` (text), `json`, `csv`.
-
-#### 3. Reset Interval
-
-| Value | Description |
-|-------|-------------|
-| `"hourly"` | Reset metrics every hour |
-| `"daily"` | Reset once per day (default) |
-| `"weekly"` | Reset once per week |
+1. **Console Output** — pretty‑printed blocks in OpenCode logs when `"console": true`.
+2. **TUI Integration** — real‑time toasts on rate limits and a `/rate-limit-status` command that returns a detailed Markdown report (overall health, per‑model stats, forecast, fallback statistics).
+3. **File Storage** — set `output.file` and `format` (`pretty`, `json`, `csv`) to persist metrics for later analysis.
 
 ## Health Tracker
 
-Health Tracker monitors the health of each model based on success rate and response time. Data is used for intelligent fallback model selection.
+Health Tracker monitors each model and stores a health score used for fallback decisions.
 
-### Enabling
+Example persisted data:
 
-```json
-{
-  "enableHealthBasedSelection": true,
-  "healthPersistence": {
-    "enabled": true,
-    "path": "~/.opencode/rate-limit-fallback-health.json"
-  }
-}
-```
-
-### Viewing Data
-
-Health Tracker automatically saves data to a JSON file at the specified path (default `~/.opencode/rate-limit-fallback-health.json`). The file contains:
-
-```json
 {
   "models": {
     "anthropic/claude-sonnet-4-20250514": {
@@ -330,78 +253,46 @@ Health Tracker automatically saves data to a JSON file at the specified path (de
       "averageResponseTime": 1200,
       "lastSuccessTime": 1707600000000,
       "consecutiveFailures": 0
-    },
-    "google/gemini-2.5-pro": {
-      "healthScore": 95,
-      "totalRequests": 80,
-      "successfulRequests": 78,
-      "failedRequests": 2,
-      "averageResponseTime": 850
     }
   },
   "lastUpdated": 1707600000000
 }
-```
 
-### Health Tracker Parameters
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `enableHealthBasedSelection` | boolean | `false` | Use health score for model selection |
-| `healthPersistence.enabled` | boolean | `true` | Persist data between sessions |
-| `healthPersistence.path` | string | `~/.opencode/rate-limit-fallback-health.json` | Path to data file |
-| `healthPersistence.responseTimeThreshold` | number | `2000` | Response time threshold (ms) |
-| `healthPersistence.minRequestsForReliableScore` | number | `3` | Min requests for reliable score |
-
-### Health Score Calculation
-
-Each model receives a score from 0 to 100:
-- **Base score** = `(successfulRequests / totalRequests) × 100`
-- **Response time penalty** = if `avgResponseTime > 2000ms`, subtract `(avgResponseTime - 2000) / 200` points
-- **Failure penalty** = subtract `consecutiveFailures × 15` points
+Key parameters include `enableHealthBasedSelection`, `healthPersistence.enabled`, and `healthPersistence.path`, which control whether health is used for selection and whether it is persisted across sessions.
 
 ## Diagnostics
 
-For detailed plugin operation information, enable verbose mode:
+Enable verbose mode for detailed insight:
 
-```json
 {
   "verbose": true
 }
-```
 
-In verbose mode, the plugin outputs:
-- Current configuration and file source
-- Configuration merge details (changes from defaults)
-- Circuit Breaker status for each model
-- Health Tracker statistics
-- Active fallback operations
+In verbose mode the plugin outputs current config and source file, config merging details, circuit breaker state, health stats, and active fallback operations.
 
 ## How It Works
 
-1. **Detection** — Plugin listens for rate limit events via `session.error`, `message.updated`, and `session.status`
-2. **Event Lock** — Single session lock (10s TTL) prevents multiple parallel processing of the same error
-3. **Abort** — Current session is aborted to stop OpenCode's internal retry mechanism
-4. **Fallback** — Next available model is selected from the fallback list
-5. **Cooldown** — Blocked models are skipped for the configured period
+1. **Detection** — Listens to `session.error`, `message.updated`, and `session.status` for rate limit–like errors.
+2. **Event Lock** — A single session lock with TTL prevents multiple parallel handlers from acting on the same event.
+3. **Abort** — The current session is aborted to stop OpenCode's built‑in retry logic.
+4. **Fallback** — The next suitable model is selected according to fallback configuration, health, and metrics.
+5. **Cooldown** — Blocked models are temporarily skipped until their cooldown window expires.
 
 ## Troubleshooting
 
 ### Plugin not performing fallback on rate limit
 
-1. Ensure configuration file exists and is valid
-2. Check that `fallbackModels` is not empty
-3. Ensure `enabled: true`
-4. Check plugin logs
+1. Ensure a configuration file exists and is valid.
+2. Check that `fallbackModels` is not empty.
+3. Ensure `"enabled": true` in the configuration.
+4. Inspect plugin logs or enable `verbose` mode.
 
 ### All models running out quickly
 
-1. Add more models to `fallbackModels`
-2. Increase `cooldownMs`
-3. Use `fallbackMode: "cycle"` for automatic reset
-4. Enable `circuitBreaker` to filter out unstable models
-
-
+1. Add more models to `fallbackModels`.
+2. Increase `cooldownMs` to give providers time to recover.
+3. Use `fallbackMode: "cycle"` for automatic reset of the pool.
+4. Enable `circuitBreaker` to temporarily exclude unstable models.
 
 ## License
 
