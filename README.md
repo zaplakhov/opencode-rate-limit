@@ -41,10 +41,25 @@
 
 ## Установка
 
-### Через npm
+### Через npm (рекомендуется)
 
 ```bash
 npm install opencode-rate-limit
+```
+
+### Через GitHub
+
+```bash
+npm install github:zaplakhov/opencode-rate-limit
+```
+
+### Из исходников
+
+```bash
+git clone https://github.com/zaplakhov/opencode-rate-limit.git
+cd opencode-rate-limit
+npm install
+npm run build
 ```
 
 ### Подключение к OpenCode
