@@ -1,0 +1,49 @@
+{
+  "name": "opencode-rate-limit",
+  "version": "1.0.0",
+  "description": "OpenCode plugin that automatically switches to fallback models when rate limited",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "keywords": [
+    "opencode",
+    "plugin",
+    "rate-limit",
+    "fallback",
+    "ai"
+  ],
+  "author": "zaplakhov",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zaplakhov/opencode-rate-limit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zaplakhov/opencode-rate-limit/issues"
+  },
+  "homepage": "https://github.com/zaplakhov/opencode-rate-limit#readme",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "devDependencies": {
+    "@types/node": "^25.2.2",
+    "@vitest/coverage-v8": "^4.0.18",
+    "typescript": "^5.3.0",
+    "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "latest"
+  }
+}

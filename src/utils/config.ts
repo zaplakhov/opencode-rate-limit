@@ -1,0 +1,257 @@
+/**
+ * Configuration loading and validation
+ */
+
+import { existsSync, readFileSync } from "fs";
+import { join, resolve, normalize, relative } from "path";
+import type { PluginConfig } from '../types/index.js';
+import type { Logger } from '../../logger.js';
+import {
+  DEFAULT_FALLBACK_MODELS,
+  VALID_FALLBACK_MODES,
+  VALID_RESET_INTERVALS,
+  DEFAULT_RETRY_POLICY,
+  VALID_RETRY_STRATEGIES,
+  DEFAULT_CIRCUIT_BREAKER_CONFIG,
+} from '../types/index.js';
+import {
+  DEFAULT_HEALTH_TRACKER_CONFIG,
+  DEFAULT_COOLDOWN_MS,
+  DEFAULT_FALLBACK_MODE,
+  DEFAULT_LOG_CONFIG,
+  DEFAULT_METRICS_CONFIG,
+  DEFAULT_CONFIG_RELOAD_CONFIG,
+  DEFAULT_DYNAMIC_PRIORITIZATION_CONFIG,
+  DEFAULT_ERROR_PATTERNS_CONFIG,
+  DEFAULT_PATTERN_LEARNING_CONFIG,
+} from '../config/defaults.js';
+
+/**
+ * Default plugin configuration
+ */
+export const DEFAULT_CONFIG: PluginConfig = {
+  fallbackModels: DEFAULT_FALLBACK_MODELS,
+  cooldownMs: DEFAULT_COOLDOWN_MS,
+  enabled: true,
+  fallbackMode: DEFAULT_FALLBACK_MODE,
+  retryPolicy: DEFAULT_RETRY_POLICY,
+  circuitBreaker: DEFAULT_CIRCUIT_BREAKER_CONFIG,
+  healthPersistence: DEFAULT_HEALTH_TRACKER_CONFIG,
+  log: DEFAULT_LOG_CONFIG,
+  metrics: DEFAULT_METRICS_CONFIG,
+  configReload: DEFAULT_CONFIG_RELOAD_CONFIG,
+  dynamicPrioritization: DEFAULT_DYNAMIC_PRIORITIZATION_CONFIG,
+  errorPatterns: DEFAULT_ERROR_PATTERNS_CONFIG,
+};
+
+/**
+ * Validate that a path does not contain directory traversal attempts
+ */
+function validatePathSafety(path: string, allowedDirs: string[]): boolean {
+  try {
+    const resolvedPath = resolve(path);
+    const normalizedPath = normalize(path);
+
+    // Check for obvious path traversal patterns
+    if (normalizedPath.includes('..')) {
+      return false;
+    }
+
+    // Check that resolved path is within allowed directories
+    for (const allowedDir of allowedDirs) {
+      if (!allowedDir) continue;
+
+      const resolvedAllowedDir = resolve(allowedDir);
+      const relativePath = relative(resolvedAllowedDir, resolvedPath);
+
+      // If relative path does not start with '..', the path is within the allowed directory
+      // Also check that relativePath is not empty (same directory)
+      if (relativePath && !relativePath.startsWith('..')) {
+        return true;
+      }
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Result of config loading, includes which file was loaded
+ */
+export interface ConfigLoadResult {
+  config: PluginConfig;
+  source: string | null;
+  rawUserConfig?: Partial<PluginConfig>; // Raw user config before merging with defaults (for verbose diff output)
+}
+
+/**
+ * Validate configuration values
+ */
+export function validateConfig(config: Partial<PluginConfig>): PluginConfig {
+  const mode = config.fallbackMode;
+  const resetInterval = config.metrics?.resetInterval;
+  const strategy = config.retryPolicy?.strategy;
+
+  return {
+    ...DEFAULT_CONFIG,
+    ...config,
+    fallbackModels: Array.isArray(config.fallbackModels) ? config.fallbackModels : DEFAULT_CONFIG.fallbackModels,
+    fallbackMode: mode && VALID_FALLBACK_MODES.includes(mode) ? mode : DEFAULT_CONFIG.fallbackMode,
+    retryPolicy: config.retryPolicy ? {
+      ...DEFAULT_CONFIG.retryPolicy!,
+      ...config.retryPolicy,
+      strategy: strategy && VALID_RETRY_STRATEGIES.includes(strategy) ? strategy : DEFAULT_CONFIG.retryPolicy!.strategy,
+    } : DEFAULT_CONFIG.retryPolicy!,
+    circuitBreaker: config.circuitBreaker ? {
+      ...DEFAULT_CONFIG.circuitBreaker!,
+      ...config.circuitBreaker,
+    } : DEFAULT_CONFIG.circuitBreaker!,
+    healthPersistence: config.healthPersistence ? {
+      ...DEFAULT_CONFIG.healthPersistence!,
+      ...config.healthPersistence,
+    } : DEFAULT_CONFIG.healthPersistence!,
+    log: config.log ? { ...DEFAULT_CONFIG.log, ...config.log } : DEFAULT_CONFIG.log,
+    metrics: config.metrics ? {
+      ...DEFAULT_CONFIG.metrics!,
+      ...config.metrics,
+      output: config.metrics.output ? {
+        ...DEFAULT_CONFIG.metrics!.output,
+        ...config.metrics.output,
+      } : DEFAULT_CONFIG.metrics!.output,
+      resetInterval: resetInterval && VALID_RESET_INTERVALS.includes(resetInterval) ? resetInterval : DEFAULT_CONFIG.metrics!.resetInterval,
+    } : DEFAULT_CONFIG.metrics!,
+    configReload: config.configReload ? {
+      ...DEFAULT_CONFIG.configReload!,
+      ...config.configReload,
+    } : DEFAULT_CONFIG.configReload!,
+    dynamicPrioritization: config.dynamicPrioritization ? {
+      ...DEFAULT_DYNAMIC_PRIORITIZATION_CONFIG,
+      ...config.dynamicPrioritization,
+    } : DEFAULT_DYNAMIC_PRIORITIZATION_CONFIG,
+    errorPatterns: config.errorPatterns ? {
+      ...DEFAULT_ERROR_PATTERNS_CONFIG,
+      ...config.errorPatterns,
+      enableLearning: config.errorPatterns.enableLearning ?? DEFAULT_PATTERN_LEARNING_CONFIG.enabled,
+      autoApproveThreshold: config.errorPatterns.autoApproveThreshold ?? DEFAULT_PATTERN_LEARNING_CONFIG.autoApproveThreshold,
+      maxLearnedPatterns: config.errorPatterns.maxLearnedPatterns ?? DEFAULT_PATTERN_LEARNING_CONFIG.maxLearnedPatterns,
+      minErrorFrequency: config.errorPatterns.minErrorFrequency ?? DEFAULT_PATTERN_LEARNING_CONFIG.minErrorFrequency,
+      learningWindowMs: config.errorPatterns.learningWindowMs ?? DEFAULT_PATTERN_LEARNING_CONFIG.learningWindowMs,
+    } : DEFAULT_ERROR_PATTERNS_CONFIG,
+  };
+}
+
+/**
+ * Load and validate config from file paths
+ */
+export function loadConfig(directory: string, worktree?: string, logger?: Logger): ConfigLoadResult {
+  const homedir = process.env.HOME || "";
+  const xdgConfigHome = process.env.XDG_CONFIG_HOME || join(homedir, ".config");
+
+  // Build search paths: worktree first, then directory, then home locations
+  const searchDirs: string[] = [];
+  if (worktree) {
+    searchDirs.push(resolve(worktree));
+  }
+  if (!worktree || worktree !== directory) {
+    searchDirs.push(resolve(directory));
+  }
+  searchDirs.push(resolve(homedir));
+  searchDirs.push(resolve(xdgConfigHome));
+
+  const configPaths: string[] = [];
+  for (const dir of searchDirs) {
+    configPaths.push(join(dir, ".opencode", "rate-limit-fallback.json"));
+    configPaths.push(join(dir, "opencode", "rate-limit-fallback.json"));
+    configPaths.push(join(dir, "rate-limit-fallback.json"));
+  }
+
+  // Log search paths for debugging
+  if (logger) {
+    logger.debug(`Searching for config file in ${configPaths.length} locations`);
+    for (const configPath of configPaths) {
+      const exists = existsSync(configPath);
+      logger.debug(`  ${exists ? "✓" : "✗"} ${configPath}`);
+    }
+  }
+
+  for (const configPath of configPaths) {
+    if (existsSync(configPath)) {
+      if (logger) {
+        logger.debug(`Found config file at: ${configPath}`);
+      }
+
+      // Validate path safety before reading
+      const isPathValid = validatePathSafety(configPath, searchDirs);
+      if (!isPathValid) {
+        if (logger) {
+          logger.warn(`Config file rejected due to path validation: ${configPath}`);
+          logger.debug(`Search directories for validation: ${searchDirs.join(', ')}`);
+        }
+        continue;
+      }
+
+      try {
+        const content = readFileSync(configPath, "utf-8");
+        if (logger) {
+          logger.debug(`Read ${content.length} bytes from config file`);
+        }
+
+        let userConfig: Partial<PluginConfig>;
+        try {
+          userConfig = JSON.parse(content) as Partial<PluginConfig>;
+        } catch (parseError) {
+          if (logger) {
+            logger.error(`Failed to parse JSON in config file: ${configPath}`, {
+              error: parseError instanceof Error ? parseError.message : String(parseError),
+            });
+          }
+          continue;
+        }
+
+        if (logger) {
+          logger.info(`Config loaded from: ${configPath}`);
+        }
+        return {
+          config: validateConfig(userConfig),
+          source: configPath,
+          rawUserConfig: userConfig,
+        };
+      } catch (error) {
+        if (logger) {
+          logger.error(`Failed to read config file: ${configPath}`, {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+        // Continue to try next config file
+        continue;
+      }
+    }
+  }
+
+  if (logger) {
+    // Log that no config file was found
+    logger.info(`No config file found in any of the ${configPaths.length} search paths. Using default configuration.`);
+
+    // Show a warning if default fallback models is empty (which is now the case)
+    if (DEFAULT_CONFIG.fallbackModels.length === 0) {
+      logger.warn('No fallback models configured. The plugin will not be able to fallback when rate limited.');
+      logger.warn('Please create a config file with your fallback models.');
+      logger.warn('Config file locations (in order of priority):');
+      for (const configPath of configPaths) {
+        logger.warn(`  - ${configPath}`);
+      }
+      logger.warn('Example config:');
+      logger.warn(JSON.stringify({
+        fallbackModels: [
+          { providerID: "anthropic", modelID: "claude-3-5-sonnet-20250514" },
+        ],
+        cooldownMs: 60000,
+        enabled: true,
+        fallbackMode: "cycle",
+      }, null, 2));
+    }
+  }
+  return { config: DEFAULT_CONFIG, source: null };
+}
