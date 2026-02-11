@@ -59,6 +59,8 @@ ConfigValidator with strict mode ensures configuration integrity before runtime.
 ### 🧪 **Full Test Coverage**
 Vitest-powered unit tests with coverage, replacing manual scripts with professional testing.
 
+## Installation
+
 ### Via npm (recommended)
 
 ```bash
@@ -80,7 +82,17 @@ npm install
 npm run build
 ```
 
-## Configuration
+### Connecting to OpenCode
+
+Add the plugin to your `opencode.json`:
+
+```json
+{
+  "plugins": ["opencode-rate-limit"]
+}
+```
+
+OpenCode will automatically load the plugin on startup.
 
 Create a configuration file in one of the following locations (in priority order):
 
@@ -88,7 +100,7 @@ Create a configuration file in one of the following locations (in priority order
 2. `<worktree>/rate-limit-fallback.json`
 3. `<project>/.opencode/rate-limit-fallback.json`
 4. `<project>/rate-limit-fallback.json`
-5. `~/.opencode/rate-limit-fallback.json` *(рекомендуется)*
+5. `~/.opencode/rate-limit-fallback.json` *(recommended)*
 6. `~/.config/opencode/rate-limit-fallback.json`
 
 ### Minimal Configuration
@@ -156,43 +168,6 @@ Create a configuration file in one of the following locations (in priority order
   }
 }
 ```
-
-## Installation
-
-### Via npm (recommended)
-
-```bash
-npm install opencode-rate-limit
-```
-
-### Via GitHub
-
-```bash
-npm install github:zaplakhov/opencode-rate-limit
-```
-
-### From source
-
-```bash
-git clone https://github.com/zaplakhov/opencode-rate-limit.git
-cd opencode-rate-limit
-npm install
-npm run build
-```
-
-### Connecting to OpenCode
-
-Add the plugin to your `opencode.json`:
-
-```json
-{
-  "plugins": ["opencode-rate-limit"]
-}
-```
-
-OpenCode will automatically load the plugin on startup.
-
-Create a configuration file in one of the following locations (in priority order):
 
 ### Fallback Modes
 
