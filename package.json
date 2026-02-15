@@ -44,6 +44,9 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "@opencode-ai/plugin": "latest"
+    "@opencode-ai/plugin": "latest",
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^12.6.2",
+    "opencode-rate-limit": "^1.2.0"
   }
 }

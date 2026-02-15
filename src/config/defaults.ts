@@ -6,6 +6,28 @@ import { join } from "path";
 import { homedir } from "os";
 
 // ============================================================================
+// OpenCode Database Defaults
+// ============================================================================
+
+/**
+ * Default path to OpenCode SQLite database
+ */
+export const DEFAULT_OPENCODE_DB_PATH = join(homedir(), '.local', 'share', 'opencode', 'opencode.db');
+
+/**
+ * Default time window for statistics (30 days)
+ */
+export const DEFAULT_OPENCODE_DB_WINDOW_DAYS = 30;
+
+/**
+ * Default OpenCode database configuration
+ */
+export const DEFAULT_OPENCODE_DB_CONFIG = {
+  dbPath: DEFAULT_OPENCODE_DB_PATH,
+  windowDays: DEFAULT_OPENCODE_DB_WINDOW_DAYS,
+} as const;
+
+// ============================================================================
 // Health Tracker Defaults
 // ============================================================================
 
@@ -24,43 +46,6 @@ export const DEFAULT_HEALTH_TRACKER_CONFIG = {
   responseTimePenaltyDivisor: 200,      // divisor for response time penalty calculation
   failurePenaltyMultiplier: 15,        // penalty per consecutive failure
   minRequestsForReliableScore: 3,       // min requests before score is reliable
-} as const;
-
-// ============================================================================
-// Retry Defaults
-// ============================================================================
-
-/**
- * Default retry policy configuration
- */
-export const DEFAULT_RETRY_POLICY_CONFIG = {
-  maxRetries: 3,
-  strategy: "immediate" as const,
-  baseDelayMs: 1000,
-  maxDelayMs: 30000,
-  jitterEnabled: false,
-  jitterFactor: 0.1,
-} as const;
-
-/**
- * Default polynomial retry parameters
- */
-export const DEFAULT_POLYNOMIAL_BASE = 1.5;
-export const DEFAULT_POLYNOMIAL_EXPONENT = 2;
-
-// ============================================================================
-// Circuit Breaker Defaults
-// ============================================================================
-
-/**
- * Default circuit breaker configuration
- */
-export const DEFAULT_CIRCUIT_BREAKER_CONFIG = {
-  enabled: false,
-  failureThreshold: 5,
-  recoveryTimeoutMs: 60000,
-  halfOpenMaxCalls: 1,
-  successThreshold: 2,
 } as const;
 
 // ============================================================================

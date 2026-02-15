@@ -6,6 +6,40 @@ import type { LogConfig } from '../../logger.js';
 import type { TextPartInput, FilePartInput } from "@opencode-ai/sdk";
 
 // ============================================================================
+// OpenCode Database Types
+// ============================================================================
+
+/**
+ * Model usage statistics from OpenCode database
+ */
+export interface ModelUsageStats {
+  providerID: string;
+  modelID: string;
+  messages: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheRead: number;
+  cacheWrite: number;
+}
+
+/**
+ * OpenCode database reader configuration
+ */
+export interface OpenCodeDbConfig {
+  dbPath?: string;
+  windowDays?: number;
+}
+
+/**
+ * Result of OpenCode database query
+ */
+export interface OpenCodeDbResult {
+  success: boolean;
+  stats: ModelUsageStats[];
+  error?: string;
+}
+
+// ============================================================================
 // Core Types
 // ============================================================================
 

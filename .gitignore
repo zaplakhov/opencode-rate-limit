@@ -5,3 +5,20 @@ bun.lock
 dist/
 tmp/*
 coverage/
+
+# Local tooling cache
+.opencode/
+/opencode.json
+
+# PA project files
+ai/
+!ai/backlog.md
+!ai/features/
+
+# macOS
+.DS_Store
+session-ses_*.md
+
+# Secrets
+.env
+.env.*
