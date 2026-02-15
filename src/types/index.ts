@@ -39,6 +39,44 @@ export interface OpenCodeDbResult {
   error?: string;
 }
 
+/**
+ * Retry statistics from OpenCode database
+ * Based on heuristic: retry when same session has messages with same parentID,
+ * first message has error/rate-limit, second message is a retry attempt
+ */
+export interface RetryStatsDb {
+  totalRetries: number;
+  byModel: Map<string, { attempts: number; successful: number }>;
+}
+
+/**
+ * Fallback statistics from OpenCode database
+ * Based on heuristic: fallback when retry attempts use different providerID/modelID
+ */
+export interface FallbackStatsDb {
+  totalFallbacks: number;
+  bySourceModel: Map<string, { count: number; targetModel: string }>;
+  byTargetModel: Map<string, { usedAsFallback: number }>;
+}
+
+/**
+ * Result of retry stats query
+ */
+export interface RetryStatsResult {
+  success: boolean;
+  stats: RetryStatsDb;
+  error?: string;
+}
+
+/**
+ * Result of fallback stats query
+ */
+export interface FallbackStatsResult {
+  success: boolean;
+  stats: FallbackStatsDb;
+  error?: string;
+}
+
 // ============================================================================
 // Core Types
 // ============================================================================
