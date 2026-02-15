@@ -1,3 +1,28 @@
 {
-  "plugins": ["opencode-rate-limit"]
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "git *": "allow",
+      "echo *": "allow",
+      "pwd": "allow",
+      "ls *": "allow",
+      "cat *": "allow",
+      "mkdir *": "allow",
+      "python3 *": "allow",
+      "python *": "allow",
+      "node *": "allow",
+      "npm *": "allow",
+      "pnpm *": "allow",
+      "yarn *": "allow",
+      "bun *": "allow",
+      "pytest *": "allow",
+      "go *": "allow",
+      "cargo *": "allow",
+      "make *": "allow",
+      "rm *": "allow",
+      "cp *": "allow",
+      "mv *": "allow"
+    }
+  }
 }

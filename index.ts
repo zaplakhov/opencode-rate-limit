@@ -26,6 +26,7 @@ import { ConfigWatcher } from "./src/config/Watcher.js";
 import { ConfigReloader, type ComponentRefs } from "./src/main/ConfigReloader.js";
 import { StatusReporter } from "./src/tui/StatusReporter.js";
 import { tool } from "@opencode-ai/plugin/tool";
+import { CommandInstaller } from "./src/installer/CommandInstaller.js";
 
 // ============================================================================
 // Helper Functions
@@ -147,6 +148,14 @@ export const RateLimitFallback: Plugin = async ({ client, directory, worktree })
   // Log verbose mode status
   if (config.verbose) {
     logger.info("Verbose mode enabled - showing diagnostic information");
+  }
+
+  // Install slash-command for rate-limit-status
+  const commandInstaller = new CommandInstaller(logger);
+  const commandInstallResult = await commandInstaller.install();
+  if (!commandInstallResult.success && commandInstallResult.error) {
+    logger.warn(`Failed to install slash-command: ${commandInstallResult.error}`);
+    logger.info('The /rate-limit-status tool is still available via AI');
   }
 
   // Log config merge diff in verbose mode

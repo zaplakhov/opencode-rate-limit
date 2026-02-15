@@ -117,7 +117,7 @@ npm install opencode-rate-limit
 ## 📊 Monitoring & Diagnostics
 
 ### Real-Time Status
-Use the `/rate-limit-status` command in OpenCode (if supported by your TUI) to get a Markdown report of your current model health, fallbacks, and retry stats.
+Use the `/rate-limit-status` command in OpenCode to get a Markdown report of your current model health, fallbacks, and retry stats. The command is automatically installed when the plugin loads.
 
 ### Troubleshooting
 If the plugin isn't falling back:
