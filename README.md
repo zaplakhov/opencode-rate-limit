@@ -32,6 +32,8 @@ We know your code and API keys are sensitive.
 - ⚡ **Circuit Breaker** — Automatically disconnects consistently failing models to prevent wasted API calls.
 - 📈 **Local Metrics** — Optional detailed stats on rate limits, fallbacks, and model health.
 - 🔃 **Hot Reload** — Tweak your configuration file on the fly without restarting OpenCode.
+- 🗄️ **OpenCode DB Integration** — Reads historical metrics from OpenCode's SQLite database with heuristic-based fallback estimation.
+- 📅 **30-Day Statistics Window** — Default time horizon for historical data analysis.
 
 ---
 
@@ -116,14 +118,52 @@ npm install opencode-rate-limit
 
 ## 📊 Monitoring & Diagnostics
 
+### Data Sources
+
+The plugin combines two types of metrics for comprehensive model health monitoring:
+
+**Historical Data (OpenCode SQLite DB):**
+- Reads directly from OpenCode's internal database: `~/.opencode/data/opencode.db`
+- Uses heuristic-based estimation for fallback counts based on retry patterns
+- Includes all configured models even if no fallback events occurred
+- Default time window: **30 days** (configurable)
+
+**Real-Time Data (MetricsManager):**
+- Tracks current session statistics
+- Monitors active fallbacks, retries, and cooldowns
+- Provides immediate feedback on model health
+
 ### Real-Time Status
-Use the `/rate-limit-status` command in OpenCode to get a Markdown report of your current model health, fallbacks, and retry stats. The command is automatically installed when the plugin loads.
+Use the `/rate-limit-status` command in OpenCode to get a Markdown report of your current model health, fallbacks, and retry stats. The report includes:
+- Historical metrics from OpenCode DB (30-day window)
+- Real-time session statistics from MetricsManager
+- Model ranking with fallback counts (estimated via heuristics)
+- Current cooldown status per model
+
+The command is automatically installed when the plugin loads.
+
+### Configuration
+You can customize the data source behavior in your `rate-limit-fallback.json`:
+
+```json
+{
+  "statistics": {
+    "enabled": true,
+    "windowDays": 30,
+    "dbPath": "~/.opencode/data/opencode.db"
+  }
+}
+```
+
+- `windowDays`: Time horizon for historical data (default: 30)
+- `dbPath`: Path to OpenCode's SQLite database (default: auto-detected)
 
 ### Troubleshooting
 If the plugin isn't falling back:
 1. Ensure your config file is valid JSON.
 2. Check that `fallbackModels` contains valid Provider and Model IDs.
 3. Add `"verbose": true` to your config file to see detailed circuit breaker logs in the OpenCode console.
+4. Verify OpenCode's database exists at the configured path if historical statistics don't appear.
 
 ---
 
