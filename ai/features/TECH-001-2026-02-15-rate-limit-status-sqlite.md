@@ -113,6 +113,10 @@
     GROUP BY providerID, modelID
 
 ## Autopilot Log
+- Task 1: COMPLETED (7adc63e) - Add SQLite module for OpenCode stats
+- Task 2: COMPLETED (8d51551) - Connect StatusReporter to SQLite global stats
+- Task 3: COMPLETED (050dccf) - Eliminate code duplication and add retry/fallback heuristics
+- Task 4: COMPLETED (d08c81f) - Update README with OpenCode DB integration documentation
 
 ## Drift Log
 
