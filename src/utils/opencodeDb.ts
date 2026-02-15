@@ -9,7 +9,7 @@
  *   fs:existsSync: Check if database file exists
  *
  * Used by:
- *   (to be added when this module is used)
+ *   tui:StatusReporter:getFullReport: true
  *
  * Glossary: ai/glossary/ai-usage.md
  */

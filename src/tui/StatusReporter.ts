@@ -1,5 +1,19 @@
 /**
- * TUI Status Reporter - Formats and sends metrics to OpenCode TUI
+ * Module: StatusReporter
+ * Role: Format and display metrics to OpenCode TUI using SQLite global stats
+ * Source of Truth: This module generates markdown reports combining SQLite and MetricsManager data
+ *
+ * Uses:
+ *   opencodeDb:readModelUsageStats: Read global model statistics from SQLite DB
+ *   metrics/MetricsManager:MetricsManager: Get fallback and retry metrics
+ *   health/HealthTracker:HealthTracker: Get model health scores
+ *   utils/helpers:getModelKey: Generate model key for lookups
+ *   utils/helpers:safeShowToast: Show toast notifications safely
+ *
+ * Used by:
+ *   fallback:FallbackHandler:FallbackHandler: true
+ *
+ * Glossary: ai/glossary/ai-usage.md
  */
 
 import type { OpenCodeClient, PluginConfig } from '../types/index.js';
@@ -7,6 +21,8 @@ import type { Logger } from '../../logger.js';
 import type { MetricsManager } from '../metrics/MetricsManager.js';
 import type { HealthTracker } from '../health/HealthTracker.js';
 import { safeShowToast, getModelKey } from '../utils/helpers.js';
+import { readModelUsageStats } from '../utils/opencodeDb.js';
+import { DEFAULT_OPENCODE_DB_CONFIG } from '../config/defaults.js';
 
 export class StatusReporter {
     private client: OpenCodeClient;
@@ -122,35 +138,98 @@ export class StatusReporter {
 
     /**
      * Generate a full markdown report for metrics
+     * Combines global SQLite statistics with fallback and retry metrics from MetricsManager
      */
     getFullReport(): string {
         const metricsData = this.metrics.getMetrics();
         const healthStats = this.health.getStats();
 
+        // Read global statistics from SQLite
+        const dbResult = readModelUsageStats(DEFAULT_OPENCODE_DB_CONFIG);
+
         let report = `# 📊 Rate Limit Fallback Status\n\n`;
 
-        report += `## 🏥 Общее здоровье\n`;
-        report += `- Средний Health Score: **${healthStats.avgHealthScore}/100**\n`;
-        report += `- Моделей отслеживается: ${healthStats.totalTracked}\n`;
-        report += `- Всего запросов: ${healthStats.totalRequests}\n\n`;
-
-        report += `## ⚡ Состояние моделей\n`;
-        report += `| Модель | Health | Запросы | Сбои | Прогноз |\n`;
-        report += `| :--- | :---: | :---: | :---: | :---: |\n`;
-
-        const allModels = this.health.getAllHealthData();
-        for (const h of allModels) {
-            const [p, m] = h.modelKey.split('/');
-            const rem = this.predictRemainingRequests(p, m);
-            const remStr = rem !== null ? `~${rem}` : '---';
-            report += `| ${m} | **${h.healthScore}** | ${h.totalRequests} | ${h.failedRequests} | ${remStr} |\n`;
+        // Show warning if DB read failed (safe degradation)
+        if (!dbResult.success) {
+            report += `> ⚠️ **Предупреждение**: Не удалось прочитать глобальную статистику из OpenCode DB\n`;
+            report += `> \`${dbResult.error}\`\n\n`;
         }
 
+        // Calculate global aggregates from SQLite
+        const totalMessages = dbResult.stats.reduce((sum, stat) => sum + stat.messages, 0);
+        const totalInputTokens = dbResult.stats.reduce((sum, stat) => sum + stat.inputTokens, 0);
+        const totalOutputTokens = dbResult.stats.reduce((sum, stat) => sum + stat.outputTokens, 0);
+        const totalCacheTokens = dbResult.stats.reduce((sum, stat) => sum + stat.cacheRead + stat.cacheWrite, 0);
+
+        // MODEL USAGE section
+        report += `## 📊 MODEL USAGE (SQLite)\n`;
+        if (dbResult.stats.length === 0) {
+            report += `Нет данных о запросах\n\n`;
+        } else {
+            report += `- Всего сообщений: ${totalMessages}\n`;
+            report += `- Input tokens: ${totalInputTokens.toLocaleString()}\n`;
+            report += `- Output tokens: ${totalOutputTokens.toLocaleString()}\n`;
+            if (totalCacheTokens > 0) {
+                report += `- Cache tokens: ${totalCacheTokens.toLocaleString()}\n`;
+            }
+            report += `- Уникальных моделей: ${dbResult.stats.length}\n\n`;
+
+            report += `| Модель | Сообщения | Input Tokens | Output Tokens | Cache Tokens |\n`;
+            report += `| :--- | :---: | :---: | :---: | :---: |\n`;
+
+            // Sort by message count descending
+            const sortedStats = [...dbResult.stats].sort((a, b) => b.messages - a.messages);
+            for (const stat of sortedStats) {
+                const totalCache = stat.cacheRead + stat.cacheWrite;
+                report += `| ${stat.modelID} | ${stat.messages} | ${stat.inputTokens.toLocaleString()} | ${stat.outputTokens.toLocaleString()} | ${totalCache.toLocaleString()} |\n`;
+            }
+            report += `\n`;
+        }
+
+        // FALLBACKS section from MetricsManager
         if (metricsData.fallbacks.total > 0) {
-            report += `\n## 🔄 Fallbacks\n`;
+            report += `## 🔄 FALLBACKS\n`;
             report += `- Всего переключений: ${metricsData.fallbacks.total}\n`;
             report += `- Успешных: ${metricsData.fallbacks.successful}\n`;
-            report += `- Средняя длительность: ${(metricsData.fallbacks.averageDuration / 1000).toFixed(2)}s\n`;
+            report += `- Неудачных: ${metricsData.fallbacks.failed}\n`;
+            report += `- Средняя длительность: ${(metricsData.fallbacks.averageDuration / 1000).toFixed(2)}s\n\n`;
+
+            if (metricsData.fallbacks.byTargetModel.size > 0) {
+                report += `| Модель-цель | Использована как fallback | Успешно | Неудачно |\n`;
+                report += `| :--- | :---: | :---: | :---: |\n`;
+                for (const [key, targetMetrics] of metricsData.fallbacks.byTargetModel.entries()) {
+                    report += `| ${key} | ${targetMetrics.usedAsFallback} | ${targetMetrics.successful} | ${targetMetrics.failed} |\n`;
+                }
+                report += `\n`;
+            }
+        }
+
+        // RETRIES section from MetricsManager
+        if (metricsData.retries.total > 0) {
+            report += `## 🔁 RETRIES\n`;
+            report += `- Всего попыток: ${metricsData.retries.total}\n`;
+            report += `- Успешных: ${metricsData.retries.successful}\n`;
+            report += `- Неудачных: ${metricsData.retries.failed}\n`;
+            report += `- Средняя задержка: ${(metricsData.retries.averageDelay / 1000).toFixed(2)}s\n\n`;
+
+            if (metricsData.retries.byModel.size > 0) {
+                report += `| Модель | Попыток | Успешно | Success Rate |\n`;
+                report += `| :--- | :---: | :---: | :---: |\n`;
+                for (const [modelID, retryStats] of metricsData.retries.byModel.entries()) {
+                    const successRate = retryStats.attempts > 0
+                        ? ((retryStats.successes / retryStats.attempts) * 100).toFixed(1)
+                        : '0.0';
+                    report += `| ${modelID} | ${retryStats.attempts} | ${retryStats.successes} | ${successRate}% |\n`;
+                }
+                report += `\n`;
+            }
+        }
+
+        // Add health summary if no fallbacks/retries but DB data exists
+        if (metricsData.fallbacks.total === 0 && metricsData.retries.total === 0) {
+            report += `## 🏥 Health Summary\n`;
+            report += `- Средний Health Score: **${healthStats.avgHealthScore}/100**\n`;
+            report += `- Моделей отслеживается: ${healthStats.totalTracked}\n\n`;
         }
 
         return report;
