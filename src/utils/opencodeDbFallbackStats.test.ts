@@ -3,7 +3,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import Database from 'better-sqlite3';
+// @ts-ignore - bun:sqlite types are built-in to Bun runtime
+import { Database } from 'bun:sqlite';
 import { existsSync, unlinkSync } from 'fs';
 import { readFallbackStats } from './opencodeDbFallbackStats.js';
 

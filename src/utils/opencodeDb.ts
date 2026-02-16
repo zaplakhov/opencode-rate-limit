@@ -4,8 +4,8 @@
  * Source of Truth: This module implements direct SQLite queries to OpenCode database
  *
  * Uses:
- *   better-sqlite3:Database: Database connection
- *   better-sqlite3:Statement: Prepared SQL statements
+ *   bun:sqlite:Database: Database connection
+ *   bun:sqlite:Statement: Prepared SQL statements
  *   fs:existsSync: Check if database file exists
  *
  * Used by:
@@ -14,7 +14,8 @@
  * Glossary: ai/glossary/ai-usage.md
  */
 
-import Database from 'better-sqlite3';
+// @ts-ignore - bun:sqlite types are built-in to Bun runtime
+import { Database } from 'bun:sqlite';
 import type {
   ModelUsageStats,
   OpenCodeDbConfig,
@@ -92,7 +93,7 @@ export function readModelUsageStats(config?: OpenCodeDbConfig): OpenCodeDbResult
     };
   }
 
-  let db: Database.Database | null = null;
+  let db: Database | null = null;
 
   try {
     // Open database in read-only mode for safety
@@ -117,7 +118,7 @@ export function readModelUsageStats(config?: OpenCodeDbConfig): OpenCodeDbResult
       GROUP BY providerID, modelID
     `;
 
-    const stmt = db.prepare(query);
+    const stmt = db.query(query);
     const rows = stmt.all(windowStart) as Array<{
       providerID: string;
       modelID: string;
