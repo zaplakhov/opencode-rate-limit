@@ -15,7 +15,6 @@
  */
 
 import Database from 'better-sqlite3';
-import { existsSync } from 'fs';
 import type {
   FallbackStatsResult,
   FallbackStatsDb,
@@ -23,6 +22,9 @@ import type {
 } from '../types/index.js';
 import {
   DEFAULT_OPENCODE_DB_CONFIG,
+  resolveOpenCodeDbPath,
+  DEFAULT_OPENCODE_DB_PATH,
+  LEGACY_OPENCODE_DB_PATH,
 } from '../config/defaults.js';
 import {
   hasRateLimitError,
@@ -64,14 +66,19 @@ import {
  */
 export function readFallbackStats(config?: OpenCodeDbConfig): FallbackStatsResult {
   const finalConfig = { ...DEFAULT_OPENCODE_DB_CONFIG, ...config };
-  const { dbPath, windowDays } = finalConfig;
 
-  // Check if database file exists - safe degradation
-  if (!existsSync(dbPath)) {
+  // Resolve database path with automatic detection
+  const resolvedDbPath = resolveOpenCodeDbPath(finalConfig.dbPath);
+  const { windowDays } = finalConfig;
+
+  // If database not found, return error with helpful message
+  if (!resolvedDbPath) {
+    const error = `OpenCode database not found. Tried: ${DEFAULT_OPENCODE_DB_PATH} (primary), ${finalConfig.dbPath === DEFAULT_OPENCODE_DB_PATH ? LEGACY_OPENCODE_DB_PATH : finalConfig.dbPath} (legacy)`;
+    console.warn(`[opencodeDbFallbackStats] ${error}`);
     return {
       success: false,
       stats: { totalFallbacks: 0, bySourceModel: new Map(), byTargetModel: new Map() },
-      error: `Database file not found: ${dbPath}`,
+      error,
     };
   }
 
@@ -79,7 +86,7 @@ export function readFallbackStats(config?: OpenCodeDbConfig): FallbackStatsResul
 
   try {
     // Open database in read-only mode for safety
-    db = new Database(dbPath, { readonly: true });
+    db = new Database(resolvedDbPath, { readonly: true });
 
     // Calculate window start timestamp
     const windowStart = calculateWindowStart(windowDays);

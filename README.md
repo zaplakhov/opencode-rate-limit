@@ -158,6 +158,13 @@ You can customize the data source behavior in your `rate-limit-fallback.json`:
 - `windowDays`: Time horizon for historical data (default: 30)
 - `dbPath`: Path to OpenCode's SQLite database (default: auto-detected)
 
+**Auto-Detection Logic:**
+If `dbPath` is not specified, the plugin automatically tries to locate the OpenCode database:
+1. Primary: `~/.opencode/data/opencode.db` (current OpenCode location)
+2. Fallback: `~/.local/share/opencode/opencode.db` (legacy location)
+
+This ensures compatibility with both current and older OpenCode installations.
+
 ### Troubleshooting
 If the plugin isn't falling back:
 1. Ensure your config file is valid JSON.

@@ -4,15 +4,68 @@
 
 import { join } from "path";
 import { homedir } from "os";
+import { existsSync } from "fs";
 
 // ============================================================================
 // OpenCode Database Defaults
 // ============================================================================
 
 /**
- * Default path to OpenCode SQLite database
+ * Primary default path to OpenCode SQLite database
+ * This matches the actual OpenCode installation location
  */
-export const DEFAULT_OPENCODE_DB_PATH = join(homedir(), '.local', 'share', 'opencode', 'opencode.db');
+export const DEFAULT_OPENCODE_DB_PATH = join(homedir(), '.opencode', 'data', 'opencode.db');
+
+/**
+ * Legacy default path to OpenCode SQLite database
+ * Used as fallback for backward compatibility
+ */
+export const LEGACY_OPENCODE_DB_PATH = join(homedir(), '.local', 'share', 'opencode', 'opencode.db');
+
+/**
+ * Resolve OpenCode database path with automatic detection
+ *
+ * This function tries to find the OpenCode database by checking:
+ * 1. Primary path: ~/.opencode/data/opencode.db (current OpenCode location)
+ * 2. Fallback path: ~/.local/share/opencode/opencode.db (legacy location)
+ *
+ * If the database is not found at either location, returns undefined.
+ *
+ * @param customPath - Optional custom path to check first
+ * @returns Resolved database path or undefined if not found
+ *
+ * @example
+ * ```typescript
+ * const dbPath = resolveOpenCodeDbPath();
+ * if (dbPath) {
+ *   console.log(`Using database at: ${dbPath}`);
+ * } else {
+ *   console.warn('OpenCode database not found');
+ * }
+ * ```
+ */
+export function resolveOpenCodeDbPath(customPath?: string): string | undefined {
+  // If custom path is provided, check if it exists
+  if (customPath) {
+    if (existsSync(customPath)) {
+      return customPath;
+    }
+    // Custom path doesn't exist, fall through to auto-detection
+  }
+
+  // Check primary path (current OpenCode location)
+  if (existsSync(DEFAULT_OPENCODE_DB_PATH)) {
+    return DEFAULT_OPENCODE_DB_PATH;
+  }
+
+  // Check legacy path for backward compatibility
+  if (existsSync(LEGACY_OPENCODE_DB_PATH)) {
+    return LEGACY_OPENCODE_DB_PATH;
+  }
+
+  // Database not found
+  return undefined;
+}
 
 /**
  * Default time window for statistics (30 days)
